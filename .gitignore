@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables
+.env
+
+# Crawled data & Local DB
+data/*.json
+data/*.csv
+data/*.db
+data/*.sqlite3
+!data/.gitkeep
+
+# Playwright / Browser artifacts
+playwright-report/
+test-results/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+*.log
