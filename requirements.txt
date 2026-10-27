@@ -13,4 +13,4 @@ python-dotenv>=1.0.1
 # Database & ORM (SQLite 기본 내장, MySQL/PostgreSQL 확장 가능)
 SQLAlchemy>=2.0.25
 # pymysql>=1.1.0          # MySQL 사용 시 주석 해제
-# psycopg2-binary>=2.9.9  # PostgreSQL 사용 시 주석 해제
+psycopg2-binary>=2.9.9    # 버거픽 DB(Supabase PostgreSQL)

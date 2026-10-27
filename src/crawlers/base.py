@@ -17,6 +17,7 @@ class BaseCrawler(ABC):
     """정적(requests/BS4) 및 동적(Playwright) 크롤링을 모두 지원하는 기본 추상 클래스"""
 
     brand_name: str = "Unknown"
+    brand_slug: str = "unknown"
 
     def __init__(self, headless: bool = HEADLESS, timeout: int = REQUEST_TIMEOUT):
         self.headless = headless
@@ -34,6 +35,13 @@ class BaseCrawler(ABC):
         if encoding:
             response.encoding = encoding
         return BeautifulSoup(response.text, "lxml")
+
+    def fetch_json(self, url: str, params: Optional[dict] = None) -> dict:
+        """JSON API GET 요청"""
+        logger.info("[%s] GET %s", self.brand_name, url)
+        response = self.session.get(url, params=params, timeout=self.timeout)
+        response.raise_for_status()
+        return response.json()
 
     @contextmanager
     def playwright_page(self) -> Generator[Page, None, None]:
