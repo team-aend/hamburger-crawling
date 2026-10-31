@@ -43,6 +43,24 @@ class BaseCrawler(ABC):
         response.raise_for_status()
         return response.json()
 
+    def last_modified(self, url: str) -> Optional[str]:
+        """HEAD 요청의 Last-Modified 헤더 (이미지/PDF로 공개된 영양성분표의 갱신 감지용)"""
+        try:
+            response = self.session.head(url, timeout=self.timeout, allow_redirects=True)
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            logger.warning("[%s] 영양성분표 갱신 확인 실패 %s: %s", self.brand_name, url, exc)
+            return None
+        return response.headers.get("Last-Modified")
+
+    def warn_if_nutrition_source_changed(self, expected: str, actual: Optional[str], csv_name: str) -> None:
+        """판독한 영양성분표(이미지/PDF)와 사이트의 현재 표가 다르면 CSV 갱신 경고"""
+        if actual is not None and actual != expected:
+            logger.warning(
+                "[%s] 영양성분표 이미지가 바뀌었습니다 (%s → %s). %s 판독 CSV를 갱신하세요.",
+                self.brand_name, expected, actual, csv_name,
+            )
+
     @contextmanager
     def playwright_page(self) -> Generator[Page, None, None]:
         """동적 렌더링이 필요한 페이지를 위한 Playwright Page 컨텍스트 매니저"""

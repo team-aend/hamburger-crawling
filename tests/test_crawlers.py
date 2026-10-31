@@ -2,9 +2,22 @@
 
 import pytest
 
-from src.crawlers import BurgerKingCrawler, LotteriaCrawler, McDonaldsCrawler, MomsTouchCrawler
-from src.crawlers.momstouch import NUTRITION_FIELDS, load_nutrition_table
-from src.crawlers.utils import parse_number
+from src.crawlers import (
+    BurgerKingCrawler,
+    CryCheeseBurgerCrawler,
+    FiveGuysCrawler,
+    FrankBurgerCrawler,
+    KFCCrawler,
+    LotteriaCrawler,
+    McDonaldsCrawler,
+    MomsTouchCrawler,
+    NoBrandBurgerCrawler,
+    ShakeShackCrawler,
+)
+from src.crawlers.fiveguys import burger_recipe
+from src.crawlers.momstouch import NUTRITION_CSV as MOMSTOUCH_NUTRITION_CSV
+from src.crawlers.shakeshack import parse_won
+from src.crawlers.utils import NUTRITION_CSV_FIELDS, load_nutrition_csv, parse_number
 from tests.conftest import load_json, load_soup
 
 
@@ -211,10 +224,10 @@ def test_momstouch_nutrition_matched_for_most_burgers(momstouch_crawl):
 
 
 def test_momstouch_nutrition_csv_is_complete():
-    exact, _ = load_nutrition_table()
+    exact, _ = load_nutrition_csv(MOMSTOUCH_NUTRITION_CSV)
     assert len(exact) >= 25
     for row in exact.values():
-        assert all(parse_number(row[col]) for col in NUTRITION_FIELDS), row["name"]
+        assert all(parse_number(row[col]) for col in NUTRITION_CSV_FIELDS if col in row), row["name"]
 
 
 def test_momstouch_warns_when_nutrition_image_changes(caplog):
@@ -225,3 +238,205 @@ def test_momstouch_warns_when_nutrition_image_changes(caplog):
     crawler.request_delay = 0
     crawler._check_nutrition_image("https://www.momstouch.co.kr/menu/view.php?idx=80")
     assert "영양성분표 이미지가 바뀌었습니다" in caplog.text
+
+
+# ---------------------------------------------------------------- 판독 영양성분 CSV
+
+
+@pytest.mark.parametrize(
+    "filename, min_rows",
+    [
+        ("momstouch_nutrition.csv", 25),
+        ("kfc_nutrition.csv", 10),
+        ("frankburger_nutrition.csv", 15),
+        ("nobrandburger_nutrition.csv", 20),
+    ],
+)
+def test_nutrition_csv_rows_have_core_values(filename, min_rows):
+    exact, _ = load_nutrition_csv(filename)
+    assert len(exact) >= min_rows
+    for row in exact.values():
+        for field in ("serving_size_g", "calories_kcal", "sodium_mg", "protein_g"):
+            assert parse_number(row[field]), (row["name"], field)
+
+
+def _no_source_check(crawler):
+    """영양성분표 갱신 확인(HEAD 요청)을 끔"""
+    crawler.last_modified = lambda url: None
+    return crawler
+
+
+# ---------------------------------------------------------------- KFC
+
+
+@pytest.fixture
+def kfc_items():
+    crawler = _no_source_check(KFCCrawler())
+    posted = {}
+
+    def fake_post_form(url, data, headers):
+        posted.update(data=data, headers=headers)
+        return load_json("kfc/delivery_burger.json")
+
+    crawler.fetch_json = lambda url, params=None: load_json("kfc/session.json")
+    crawler._post_form = fake_post_form
+    items = crawler.crawl()
+    assert posted["headers"] == {"X-CSRF-TOKEN": "test-token"}
+    assert posted["data"]["delivery_subGroupCd"] == "BEGR"
+    return items
+
+
+def test_kfc_keeps_only_burgers_with_set_price(kfc_items):
+    names = [item.name for item in kfc_items]
+    assert len(names) == 9
+    assert not [name for name in names if name.endswith(("세트", "박스", "콤보"))]
+    assert "툼켄치밥" not in names  # 영양성분표 버거 목록에 없는 메뉴 제외
+
+    zinger = by_name(kfc_items)["징거"]
+    assert (zinger.price, zinger.set_price) == (6800, 9400)
+    assert zinger.detail_url == "https://www.kfckorea.com/menu/detail/N/1249525"
+    assert zinger.image_url.startswith("https://kfcapi.inicis.com/kfcs_api_img/")
+    n = zinger.nutrition
+    assert (n.serving_size_g, n.calories_kcal, n.protein_g, n.sodium_mg) == (225, 553, 33, 866)
+
+
+def test_kfc_restores_chik_character(kfc_items):
+    assert "칰폴레맵징거타워" in by_name(kfc_items)
+
+
+# ---------------------------------------------------------------- 프랭크버거
+
+
+@pytest.fixture
+def frankburger_items():
+    crawler = _no_source_check(FrankBurgerCrawler())
+    crawler.fetch_soup = lambda url, params=None, encoding="utf-8": load_soup("frankburger/menu_1.html")
+    return crawler.crawl()
+
+
+def test_frankburger_burgers(frankburger_items):
+    assert len(frankburger_items) == 15
+    burger = by_name(frankburger_items)["K불고기버거"]  # 'K 불고기 버거' → 공백 제거
+    assert burger.description.startswith("전통 궁중식")
+    assert burger.image_url == "https://frankburger.co.kr/img/page/2022_menu/01/menu1_img21.jpg"
+    assert burger.price is None
+    assert (burger.nutrition.calories_kcal, burger.nutrition.sodium_mg) == (491.99, 656.9)
+
+
+def test_frankburger_nutrition_matched_for_every_burger(frankburger_items):
+    assert [item.name for item in frankburger_items if item.nutrition.calories_kcal is None] == []
+
+
+# ---------------------------------------------------------------- 노브랜드버거
+
+
+def _nobrandburger_soup(url, params=None, encoding="utf-8"):
+    if url.endswith("/popup/nobrandburger_02.html"):
+        return load_soup("nobrandburger/nutrition_popup.html")
+    return load_soup("nobrandburger/index.html")
+
+
+@pytest.fixture
+def nobrandburger_items():
+    crawler = NoBrandBurgerCrawler()
+    crawler.fetch_soup = _nobrandburger_soup
+    return crawler.crawl()
+
+
+def test_nobrandburger_no_warning_for_current_nutrition_image(caplog):
+    crawler = NoBrandBurgerCrawler()
+    crawler.fetch_soup = _nobrandburger_soup
+    caplog.set_level("WARNING")
+    crawler._check_nutrition_image()
+    assert "영양성분표 이미지가 바뀌었습니다" not in caplog.text
+
+
+def test_nobrandburger_burgers(nobrandburger_items):
+    assert len(nobrandburger_items) == 22
+    burger = by_name(nobrandburger_items)["진짜 비빔밥 버거"]
+    assert burger.name_en == "Real Bibimbap Burger"
+    assert burger.description.startswith("쌀과 5종 야채로")
+    assert burger.image_url.startswith("https://www.shinsegaefood.com/uimages/2026/10/30/")
+    assert (burger.nutrition.calories_kcal, burger.nutrition.sodium_mg) == (674, 1351)
+
+
+def test_nobrandburger_nutrition_matched_for_every_burger(nobrandburger_items):
+    assert [item.name for item in nobrandburger_items if item.nutrition.calories_kcal is None] == []
+
+
+# ---------------------------------------------------------------- 쉐이크쉑
+
+
+@pytest.fixture
+def shakeshack_items():
+    crawler = ShakeShackCrawler()
+    crawler.fetch_soup = lambda url, params=None, encoding="utf-8": load_soup("shakeshack/menu.html")
+    return crawler.crawl()
+
+
+@pytest.mark.parametrize("text, won", [("W 10,9", 10900), ("Single W 9,2 Double W 14,2", 9200), ("", None)])
+def test_shakeshack_price_format(text, won):
+    assert parse_won(text) == won
+
+
+def test_shakeshack_burgers_and_chicken_burgers(shakeshack_items):
+    items = by_name(shakeshack_items)
+    assert len(items) == 12
+    assert "치킨 바이트" not in items  # 치킨 탭의 버거가 아닌 메뉴 제외
+    assert "헤리티지 떡갈비 쉑" not in items  # HTML 주석으로 숨긴 메뉴 제외
+
+    shack = items["쉑버거"]
+    assert (shack.name_en, shack.price) == ("ShackBurger", 9200)
+    assert shack.image_url == "http://www.shakeshack.kr/resources/images/menu/burger_241126_shackburger.jpg"
+    assert items["쉑하우스 바비큐 버거"].is_limited  # 시즌 한정
+    assert items["핫 치킨"].price == 9700  # 닭가슴살 기준
+
+
+# ---------------------------------------------------------------- 파이브가이즈
+
+
+@pytest.fixture
+def fiveguys_items():
+    crawler = _no_source_check(FiveGuysCrawler())
+    crawler.fetch_soup = lambda url, params=None, encoding="utf-8": load_soup("fiveguys/burgers.html")
+    return crawler.crawl()
+
+
+@pytest.mark.parametrize(
+    "name, recipe",
+    [
+        ("햄버거", {"bun": 1, "patty": 2}),
+        ("베이컨 치즈버거", {"bun": 1, "patty": 2, "cheese": 2, "bacon": 1}),
+        ("리틀 치즈버거", {"bun": 1, "patty": 1, "cheese": 1}),
+    ],
+)
+def test_fiveguys_recipe(name, recipe):
+    assert burger_recipe(name) == recipe
+
+
+def test_fiveguys_burgers_sum_components(fiveguys_items):
+    assert len(fiveguys_items) == 8  # 토핑 추천 카드 제외
+    n = by_name(fiveguys_items)["치즈버거"].nutrition
+    # 번 238 + 패티 195x2 + 치즈 61.2x2, 소금 (0.49 + 0.13x2 + 0.79x2)g x 400
+    assert n.calories_kcal == 750.4
+    assert n.sodium_mg == 932
+    assert n.basis_note.startswith("기본 구성 합산, 토핑 제외")
+
+
+# ---------------------------------------------------------------- 크라이치즈버거
+
+
+@pytest.fixture
+def crycheeseburger_items():
+    crawler = CryCheeseBurgerCrawler()
+    crawler.fetch_soup = lambda url, params=None, encoding="utf-8": load_soup("crycheeseburger/menu.html")
+    return crawler.crawl()
+
+
+def test_crycheeseburger_prices_and_set_prices(crycheeseburger_items):
+    items = by_name(crycheeseburger_items)
+    assert len(items) == 4
+    double = items["더블치즈버거"]
+    assert (double.price, double.set_price) == (7900, 10900)
+    assert double.image_url == "https://www.crycheeseburger.com/images/menu/yellow/double-cheeseburger.webp"
+    assert items["치킨버거"].description is None  # 소개 문구가 없으면 빈 문자열 대신 None
