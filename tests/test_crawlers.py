@@ -3,6 +3,8 @@
 import pytest
 
 from src.crawlers import BurgerKingCrawler, LotteriaCrawler, McDonaldsCrawler, MomsTouchCrawler
+from src.crawlers.momstouch import NUTRITION_FIELDS, load_nutrition_table
+from src.crawlers.utils import parse_number
 from tests.conftest import load_json, load_soup
 
 
@@ -194,4 +196,32 @@ def test_momstouch_thigh_burger(momstouch_crawl):
     assert burger.image_url.startswith("https://www.momstouch.co.kr/")
     assert burger.description
     assert burger.price is None  # 사이트가 가격 미제공
-    assert burger.nutrition.calories_kcal is None  # 영양성분은 이미지로만 공개
+
+    # 영양성분은 판독 CSV에서 매칭
+    n = burger.nutrition
+    assert (n.serving_size_g, n.calories_kcal, n.protein_g) == (230, 594, 28)
+    assert (n.sodium_mg, n.sugar_g, n.saturated_fat_g) == (1009, 14, 8.6)
+    assert n.basis_note.startswith("단품 기준 (맘스터치 영양성분표")
+
+
+def test_momstouch_nutrition_matched_for_most_burgers(momstouch_crawl):
+    items = momstouch_crawl[0]
+    matched = [item for item in items if item.nutrition.calories_kcal is not None]
+    assert len(matched) >= 20
+
+
+def test_momstouch_nutrition_csv_is_complete():
+    exact, _ = load_nutrition_table()
+    assert len(exact) >= 25
+    for row in exact.values():
+        assert all(parse_number(row[col]) for col in NUTRITION_FIELDS), row["name"]
+
+
+def test_momstouch_warns_when_nutrition_image_changes(caplog):
+    # 픽스처(view_80.html)는 이전 영양성분표 이미지를 참조
+    caplog.set_level("WARNING")
+    crawler = MomsTouchCrawler()
+    crawler.fetch_soup = lambda url, params=None, encoding="utf-8": load_soup("momstouch/view_80.html")
+    crawler.request_delay = 0
+    crawler._check_nutrition_image("https://www.momstouch.co.kr/menu/view.php?idx=80")
+    assert "영양성분표 이미지가 바뀌었습니다" in caplog.text

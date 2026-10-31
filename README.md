@@ -22,7 +22,9 @@ hamburger-crawling/
     │   ├── mcdonalds.py      # 맥도날드 (공식 JSON API)
     │   ├── burgerking.py     # 버거킹 (bizMOB 내부 API)
     │   ├── lotteria.py       # 롯데리아 (롯데잇츠 브랜드 페이지 + 영양성분표)
-    │   └── momstouch.py      # 맘스터치 (정적 HTML)
+    │   ├── momstouch.py      # 맘스터치 (정적 HTML + 판독 영양성분 CSV)
+    │   └── data/
+    │       └── momstouch_nutrition.csv  # 맘스터치 영양성분표 이미지를 사람이 판독·검수한 값
     └── storage/
         ├── file_storage.py   # JSON / CSV 저장 모듈
         └── db_storage.py     # 상품·변형·가격 이력·영양성분 Upsert 및 조회
@@ -78,9 +80,11 @@ python main.py crawl
 | 맥도날드 | `mcdonalds.co.kr/api/v1` | ✗ (사이트 미제공) | ✗ | 중량·열량·단백질·당류·포화지방·나트륨 |
 | 버거킹 | `burgerking.co.kr` 내부 API | ✓ (매장가) | ✓ | 중량·열량·단백질·당류·포화지방·나트륨 |
 | 롯데리아 | `lotteeatz.com/brand/ria` + 영양성분표 | ✓ | ✗ (매장별 주문 페이지에만 있음) | 중량·열량·단백질·당류·포화지방·나트륨 |
-| 맘스터치 | `momstouch.co.kr` | ✗ (사이트 미제공) | ✗ | ✗ (이미지로만 공개) |
+| 맘스터치 | `momstouch.co.kr` + 판독 CSV | ✗ (사이트 미제공) | ✗ | 중량·열량·단백질·당류·포화지방·나트륨 (이미지 판독) |
 
 탄수화물·지방은 네 브랜드 모두 공개하지 않아 비워 둡니다.
+
+맘스터치는 영양성분을 전 메뉴 공통 이미지 한 장으로만 공개하므로, 이미지를 판독·검수한 `src/crawlers/data/momstouch_nutrition.csv`를 메뉴명으로 매칭합니다. 크롤링 때 사이트의 영양성분 이미지가 `momstouch.py`의 `NUTRITION_IMAGE_PATH`와 다르면 경고 로그가 남으니, 새 표를 판독해 CSV와 `NUTRITION_IMAGE_PATH`·`NUTRITION_ISSUED`를 갱신하세요.
 
 ### 저장된 햄버거 정보 조회
 ```bash
