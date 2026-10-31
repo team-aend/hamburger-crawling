@@ -14,7 +14,6 @@ LIST_URL = f"{BASE_URL}/menu/new.php"
 BURGER_CATEGORY = "CG0005"
 MAX_PAGES = 20
 GO_VIEW_RE = re.compile(r"go_view\('(\d+)'\)")
-BG_URL_RE = re.compile(r"url\(['\"]?([^'\")]+)")
 
 # 영양성분표는 전 메뉴 공통 이미지 한 장이라 사람이 판독·검수한 CSV를 사용
 # 사이트 이미지가 바뀌면 경고 로그를 남기므로, 새 표를 판독해 CSV와 아래 두 값을 갱신
@@ -72,7 +71,6 @@ class MomsTouchCrawler(BaseCrawler):
                         name_en=name_en or None,
                         source_id=idx,
                         description=description,
-                        image_url=self._image_url(link.select_one("figure span[style]")),
                         detail_url=detail_url,
                         nutrition=nutrition_from_row(
                             match_by_name(name, *nutrition_table),
@@ -100,14 +98,6 @@ class MomsTouchCrawler(BaseCrawler):
             return
         src = img.get("src") if img else "(이미지 없음)"
         self.warn_if_nutrition_source_changed(NUTRITION_IMAGE_PATH, src, NUTRITION_CSV)
-
-    @staticmethod
-    def _image_url(node) -> Optional[str]:
-        match = BG_URL_RE.search(node.get("style", "")) if node else None
-        if not match:
-            return None
-        path = match.group(1)
-        return path if path.startswith("http") else f"{BASE_URL}{path}"
 
     def _fetch_description(self, detail_url: str) -> Optional[str]:
         time.sleep(self.request_delay)

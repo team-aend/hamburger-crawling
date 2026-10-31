@@ -79,7 +79,6 @@ class BurgerKingCrawler(BaseCrawler):
                     price=parse_price(detail.get("dineInprc")),
                     set_price=parse_price(set_detail.get("dineInprc")) if set_detail else None,
                     description=strip_html(detail.get("menuDesc")),
-                    image_url=detail.get("menuImgPath") or menu.get("menuImgPath"),
                     detail_url=f"{BASE_URL}/menu/detail/{menu['menuCd']}",
                     is_limited=KEYWORD_LIMITED in keywords,
                     nutrition=self._parse_nutrition(row) if row else NutritionInfo(),

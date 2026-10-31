@@ -1,7 +1,6 @@
 import logging
 import re
 from typing import List, Optional
-from urllib.parse import parse_qs, urljoin, urlparse
 
 from src.crawlers.base import BaseCrawler
 from src.crawlers.utils import clean_name, name_key, parse_price
@@ -45,7 +44,6 @@ class CryCheeseBurgerCrawler(BaseCrawler):
                     description=self._description(card),
                     price=self._price(card),
                     set_price=set_prices.get(name_key(name)),
-                    image_url=self._image_url(card.select_one("img")),
                     detail_url=MENU_URL,
                 )
             )
@@ -65,12 +63,3 @@ class CryCheeseBurgerCrawler(BaseCrawler):
         texts = [intro.get_text(" ", strip=True)] if intro else []
         texts += [p.get_text(" ", strip=True) for p in card.select("p") if not p.get_text(strip=True).endswith("원")]
         return next((text for text in texts if text), None)
-
-    @staticmethod
-    def _image_url(img) -> Optional[str]:
-        """Next.js 이미지 프록시(/_next/image?url=...)에서 원본 경로를 꺼냄"""
-        src = img.get("src") if img else None
-        if not src:
-            return None
-        original = parse_qs(urlparse(src).query).get("url", [src])[0]
-        return urljoin(BASE_URL, original)

@@ -75,7 +75,7 @@ python main.py crawl
 | --- | --- |
 | `categories` | `BURGER_CATEGORY_SLUG`(기본 `burger`) 카테고리. 없으면 생성 |
 | `brands` | `mcdonalds`, `burgerking`, `lotteria`, `momstouch`, `kfc`, `frankburger`, `nobrandburger`, `shakeshack`, `fiveguys`, `crycheeseburger`. 없으면 생성 |
-| `products` | (브랜드, 메뉴명) → (브랜드, slug) 순으로 기존 상품을 찾아 갱신, 없으면 추가. 기존 `image_url`은 덮어쓰지 않음 |
+| `products` | (브랜드, 메뉴명) → (브랜드, slug) 순으로 기존 상품을 찾아 갱신, 없으면 추가. 기존 `image_url`은 덮어쓰지 않음 (크롤러는 저작권 문제로 브랜드 공식 이미지를 수집하지 않음. 자체 이미지는 `docs/burger_image_prompts.csv`로 생성) |
 | `product_variants` | `SINGLE`(단품, 기본 변형), 세트 가격이 있으면 `SET` |
 | `product_prices` | `STORE` 채널. 가격이 바뀐 경우에만 기존 행의 `ended_at`을 채우고 새 행 추가 |
 | `nutrition` | 단품 변형 기준 영양성분 |

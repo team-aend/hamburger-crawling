@@ -1,7 +1,6 @@
 import logging
 import re
 from typing import List
-from urllib.parse import quote
 
 from src.crawlers.base import BaseCrawler
 from src.crawlers.utils import build_name_tables, clean_name, match_by_name, parse_number, strip_html
@@ -76,7 +75,6 @@ class McDonaldsCrawler(BaseCrawler):
                     name_en=re.sub(r"\s*Meal$", "", name_en) or None,
                     source_id=str(product["seq"]),
                     description=strip_html(product.get("korContent")),
-                    image_url=self._image_url(product.get("pcImageUrl")),
                     detail_url=(
                         f"{BASE_URL}/kor/menu/detail/{product['seq']}/"
                         f"{product['rnum']}/{product['subCategorySeq']}"
@@ -88,10 +86,6 @@ class McDonaldsCrawler(BaseCrawler):
 
         logger.info("[%s] 버거 %d건 수집", self.brand_name, len(items))
         return items
-
-    @staticmethod
-    def _image_url(path: str) -> str:
-        return f"{BASE_URL}{quote(path, safe='/%')}" if path else None
 
     @staticmethod
     def _is_limited(open_time_end: str) -> bool:
