@@ -1,0 +1,63 @@
+name: Weekly crawl
+
+on:
+  schedule:
+    # 매주 월요일 09:00 KST (UTC 00:00)
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "DB에 반영하지 않고 변경 예정 건수만 확인"
+        type: boolean
+        default: false
+
+concurrency:
+  group: weekly-crawl
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      # 파싱 로직이 깨졌으면 DB에 쓰기 전에 멈춤 (사이트 접속 없음)
+      - name: Offline tests
+        run: pytest -q
+
+      - name: Crawl and save to DB
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::저장소 시크릿 DATABASE_URL이 없습니다 (Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+          set -o pipefail
+          python main.py crawl --export db $DRY_RUN 2>&1 | tee crawl.log
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## 크롤링 결과"
+            echo '```'
+            grep -E "버거 [0-9]+건 수집|DB 저장 완료|DRY RUN" crawl.log || echo "(수집 로그 없음)"
+            echo '```'
+            if grep -qE "\[(WARNING|ERROR)\]" crawl.log; then
+              echo "## 경고·오류"
+              echo '```'
+              grep -E "\[(WARNING|ERROR)\]" crawl.log
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true

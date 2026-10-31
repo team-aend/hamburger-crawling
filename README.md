@@ -55,6 +55,8 @@ playwright install chromium
 cp .env.example .env
 ```
 
+버거픽 운영 DB(Supabase)에 연결할 때는 대시보드 **Connect → Transaction pooler** 연결 문자열(포트 **6543**)을 쓰고, 앞부분을 `postgresql+psycopg2://`로, 끝에 `?sslmode=require`를 붙입니다. 5432(Session Pooler)는 동시 연결이 15개뿐이라 백엔드 개발 서버가 켜져 있으면 `max clients reached`로 막힐 수 있습니다. Supabase 무료 프로젝트는 7일 동안 안 쓰면 일시정지되니, 접속이 갑자기 안 되면 대시보드에서 Paused 상태인지 먼저 확인하세요.
+
 ## 💻 실행 방법
 
 ### 크롤링 실행 및 전체 저장 (JSON + CSV + DB)
@@ -106,6 +108,15 @@ python main.py query
 python main.py query --brand 맥도날드
 python main.py query --keyword 와퍼
 ```
+
+## ⏰ 정기 실행 (GitHub Actions)
+
+`.github/workflows/weekly-crawl.yml`이 **매주 월요일 09:00(KST)** 에 오프라인 테스트를 돌린 뒤 전체 브랜드를 크롤링해 DB에 저장합니다. Actions 탭에서 **Run workflow**로 바로 실행할 수도 있고, 이때 `dry_run`을 켜면 DB에 반영하지 않고 변경 예정 건수만 로그로 남깁니다.
+
+- 저장소가 공개 저장소라 Actions 실행 시간은 무료이고, 크롤러는 requests만 써서 브라우저 설치 없이 돕니다.
+- DB 주소는 저장소 **Settings → Secrets and variables → Actions**에 `DATABASE_URL`(6543 포트 주소)로 등록합니다. 시크릿이 없으면 워크플로가 실패합니다.
+- 영양성분표 이미지가 바뀌었다는 경고는 실행 로그와 작업 요약(Summary)에 남으니, 보이면 판독 CSV를 갱신하세요.
+- 공개 저장소에서 60일 동안 커밋이 없으면 GitHub이 예약 실행을 멈추니, 그때는 Actions 탭에서 다시 켜 주세요.
 
 ## 🧪 테스트
 
