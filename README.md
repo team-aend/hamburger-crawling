@@ -23,8 +23,13 @@ hamburger-crawling/
     │   ├── burgerking.py     # 버거킹 (bizMOB 내부 API)
     │   ├── lotteria.py       # 롯데리아 (롯데잇츠 브랜드 페이지 + 영양성분표)
     │   ├── momstouch.py      # 맘스터치 (정적 HTML + 판독 영양성분 CSV)
-    │   └── data/
-    │       └── momstouch_nutrition.csv  # 맘스터치 영양성분표 이미지를 사람이 판독·검수한 값
+    │   ├── kfc.py            # KFC (딜리버리 메뉴 API + 판독 영양성분 CSV)
+    │   ├── frankburger.py    # 프랭크버거 (정적 HTML + 판독 영양성분 CSV)
+    │   ├── nobrandburger.py  # 노브랜드버거 (신세계푸드 브랜드 페이지 + 판독 영양성분 CSV)
+    │   ├── shakeshack.py     # 쉐이크쉑 (정적 HTML, http 전용)
+    │   ├── fiveguys.py       # 파이브가이즈 (정적 HTML + 영양 PDF 재료값 합산)
+    │   ├── crycheeseburger.py # 크라이치즈버거 (Next.js 정적 렌더링)
+    │   └── data/             # 이미지·PDF로만 공개된 영양성분표를 사람이 판독·검수한 CSV
     └── storage/
         ├── file_storage.py   # JSON / CSV 저장 모듈
         └── db_storage.py     # 상품·변형·가격 이력·영양성분 Upsert 및 조회
@@ -67,7 +72,7 @@ python main.py crawl
 | 테이블 | 저장 내용 |
 | --- | --- |
 | `categories` | `BURGER_CATEGORY_SLUG`(기본 `burger`) 카테고리. 없으면 생성 |
-| `brands` | `mcdonalds`, `burgerking`, `lotteria`, `momstouch`. 없으면 생성 |
+| `brands` | `mcdonalds`, `burgerking`, `lotteria`, `momstouch`, `kfc`, `frankburger`, `nobrandburger`, `shakeshack`, `fiveguys`, `crycheeseburger`. 없으면 생성 |
 | `products` | (브랜드, 메뉴명) → (브랜드, slug) 순으로 기존 상품을 찾아 갱신, 없으면 추가. 기존 `image_url`은 덮어쓰지 않음 |
 | `product_variants` | `SINGLE`(단품, 기본 변형), 세트 가격이 있으면 `SET` |
 | `product_prices` | `STORE` 채널. 가격이 바뀐 경우에만 기존 행의 `ended_at`을 채우고 새 행 추가 |
@@ -81,10 +86,16 @@ python main.py crawl
 | 버거킹 | `burgerking.co.kr` 내부 API | ✓ (매장가) | ✓ | 중량·열량·단백질·당류·포화지방·나트륨 |
 | 롯데리아 | `lotteeatz.com/brand/ria` + 영양성분표 | ✓ | ✗ (매장별 주문 페이지에만 있음) | 중량·열량·단백질·당류·포화지방·나트륨 |
 | 맘스터치 | `momstouch.co.kr` + 판독 CSV | ✗ (사이트 미제공) | ✗ | 중량·열량·단백질·당류·포화지방·나트륨 (이미지 판독) |
+| KFC | `kfckorea.com` 딜리버리 API + 판독 CSV | ✓ (딜리버리가) | ✓ | 중량·열량·단백질·당류·포화지방·나트륨 (이미지 판독) |
+| 프랭크버거 | `frankburger.co.kr` + 판독 CSV | ✗ (사이트 미제공) | ✗ | 중량·열량·단백질·당류·포화지방·나트륨 (이미지 판독) |
+| 노브랜드버거 | `shinsegaefood.com/nobrandburger` + 판독 CSV | ✗ (사이트 미제공) | ✗ | 중량·열량·단백질·당류·포화지방·나트륨 (이미지 판독) |
+| 쉐이크쉑 | `shakeshack.kr` (http) | ✓ (Single 기준) | ✗ | ✗ (사이트 미제공) |
+| 파이브가이즈 | `fiveguys.co.kr` + 영양 PDF | ✗ (사이트 미제공) | ✗ | 번·패티·치즈·베이컨 재료값 합산 (토핑 제외), 탄수화물·지방 포함 |
+| 크라이치즈버거 | `crycheeseburger.com/menu` | ✓ | ✓ | ✗ (사이트 미제공) |
 
-탄수화물·지방은 네 브랜드 모두 공개하지 않아 비워 둡니다.
+탄수화물·지방은 파이브가이즈를 제외하면 공개하지 않아 비워 둡니다.
 
-맘스터치는 영양성분을 전 메뉴 공통 이미지 한 장으로만 공개하므로, 이미지를 판독·검수한 `src/crawlers/data/momstouch_nutrition.csv`를 메뉴명으로 매칭합니다. 크롤링 때 사이트의 영양성분 이미지가 `momstouch.py`의 `NUTRITION_IMAGE_PATH`와 다르면 경고 로그가 남으니, 새 표를 판독해 CSV와 `NUTRITION_IMAGE_PATH`·`NUTRITION_ISSUED`를 갱신하세요.
+맘스터치·KFC·프랭크버거·노브랜드버거는 영양성분을 이미지 한 장으로만 공개하므로, 이미지를 판독·검수한 `src/crawlers/data/{브랜드}_nutrition.csv`를 메뉴명으로 매칭합니다. 크롤링 때 사이트의 영양성분표가 판독한 것과 다르면(이미지 주소 또는 Last-Modified 변경) `영양성분표 이미지가 바뀌었습니다` 경고 로그가 남으니, 새 표를 판독해 CSV와 각 크롤러 상단의 기준값(`NUTRITION_IMAGE_PATH`·`NUTRITION_LAST_MODIFIED` 등)을 갱신하세요. 파이브가이즈는 영양 PDF의 재료별 값(`fiveguys_components.csv`)을 메뉴명에 따른 기본 구성(일반 버거 패티 2장, 리틀 1장, 치즈는 패티 수만큼, 베이컨 1인분)으로 합산하며, 나트륨은 소금(g) ÷ 2.5로 환산합니다.
 
 ### 저장된 햄버거 정보 조회
 ```bash

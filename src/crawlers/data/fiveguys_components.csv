@@ -1,0 +1,5 @@
+component,serving_size_g,calories_kcal,fat_g,saturated_fat_g,carbohydrate_g,sugar_g,protein_g,salt_g
+bun,77,238,7.52,2.57,37.6,6.2,6.0,0.49
+patty,67,195,14,5.59,0.1,0.1,18,0.13
+cheese,17.4,61.2,5.3,3.3,0.9,0.5,3.2,0.79
+bacon,14,76,5.46,2.10,0.6,0.1,6.2,0.64
