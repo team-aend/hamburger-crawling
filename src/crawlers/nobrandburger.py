@@ -1,7 +1,6 @@
 import logging
 import re
 from typing import List, Optional, Tuple
-from urllib.parse import quote
 
 from src.crawlers.base import BaseCrawler
 from src.crawlers.utils import clean_name, load_nutrition_csv, match_by_name, nutrition_from_row
@@ -56,7 +55,6 @@ class NoBrandBurgerCrawler(BaseCrawler):
                     name=name,
                     name_en=name_en,
                     description=clean_name(BR_RE.sub(" ", button.get("data-story", ""))) or None,
-                    image_url=self._image_url(button.get("data-img")),
                     detail_url=MENU_URL,
                     nutrition=nutrition_from_row(
                         match_by_name(name, *nutrition_table), f"단품 기준 (노브랜드버거 영양성분 {NUTRITION_ISSUED})"
@@ -83,7 +81,3 @@ class NoBrandBurgerCrawler(BaseCrawler):
         parts = [clean_name(part) for part in BR_RE.split(data_name)]
         parts = [part for part in parts if part]
         return parts[0], (" ".join(parts[1:]) or None)
-
-    @staticmethod
-    def _image_url(path: Optional[str]) -> Optional[str]:
-        return f"{BASE_URL}/uimages/{quote(path)}" if path else None

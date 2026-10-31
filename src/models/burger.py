@@ -54,7 +54,7 @@ class BurgerItem(BaseModel):
     price: Optional[int] = Field(None, description="단품 매장 가격(원)")
     set_price: Optional[int] = Field(None, description="세트 매장 가격(원)")
     description: Optional[str] = Field(None, description="메뉴 설명")
-    image_url: Optional[str] = Field(None, description="메뉴 이미지 URL")
+    image_url: Optional[str] = Field(None, description="자체 메뉴 이미지 경로 (크롤러는 브랜드 공식 이미지를 수집하지 않아 비워 둠)")
     detail_url: Optional[str] = Field(None, description="상세 페이지 URL")
     is_limited: bool = Field(default=False, description="한정 메뉴 여부")
     nutrition: NutritionInfo = Field(default_factory=NutritionInfo, description="단품 영양성분")

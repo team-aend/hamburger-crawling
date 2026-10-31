@@ -15,7 +15,6 @@ from src.models.burger import BurgerItem
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.kfckorea.com"
-IMAGE_BASE_URL = "https://kfcapi.inicis.com"
 SESSION_URL = f"{BASE_URL}/kfc/interface/session"
 DELIVERY_LIST_URL = f"{BASE_URL}/kfc/interface/selectDeliveryList"
 BURGER_SUB_GROUP = "BEGR"
@@ -66,7 +65,6 @@ class KFCCrawler(BaseCrawler):
                     price=parse_price(menu.get("price")),
                     set_price=prices.get(name_key(f"{name}세트")),
                     description=menu.get("menuDesc") or None,
-                    image_url=f"{IMAGE_BASE_URL}{menu['menuImgUrl']}" if menu.get("menuImgUrl") else None,
                     detail_url=f"{BASE_URL}/menu/detail/N/{menu['menuCd']}",
                     nutrition=nutrition_from_row(row, f"단품 기준 (KFC 영양정보표 {NUTRITION_VERSION})"),
                 )

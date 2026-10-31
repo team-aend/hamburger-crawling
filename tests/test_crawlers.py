@@ -54,8 +54,7 @@ def test_mcdonalds_big_mac(mcdonalds_items):
     big_mac = by_name(mcdonalds_items)["빅맥"]  # '빅맥® 세트' → '빅맥'
     assert big_mac.name_en == "Big Mac"
     assert big_mac.detail_url == "https://www.mcdonalds.co.kr/kor/menu/detail/178/3/16"
-    assert big_mac.image_url.startswith("https://www.mcdonalds.co.kr/upload/")
-    assert "%EB%B9%85%EB%A7%A5" in big_mac.image_url  # 한글 경로는 퍼센트 인코딩
+    assert big_mac.image_url is None  # 저작권 문제로 브랜드 공식 이미지는 수집하지 않음
     assert not big_mac.is_limited
 
     n = big_mac.nutrition
@@ -100,7 +99,7 @@ def test_burgerking_whopper(burgerking_items):
     assert whopper.set_price == 9600
     assert whopper.source_id == "1080013"
     assert whopper.detail_url == "https://www.burgerking.co.kr/menu/detail/1080013"
-    assert whopper.image_url.startswith("https://")
+    assert whopper.image_url is None  # 저작권 문제로 브랜드 공식 이미지는 수집하지 않음
     assert whopper.description
 
     n = whopper.nutrition
@@ -161,7 +160,7 @@ def test_lotteria_hanwoo_bulgogi(lotteria_items):
     assert burger.price == 9200
     assert burger.set_price is None
     assert burger.source_id == "REP_000073"
-    assert burger.image_url == "https://img.lotteeatz.com/upload/product/2023/02/10/20230210102118259_1.png"
+    assert burger.image_url is None  # 저작권 문제로 브랜드 공식 이미지는 수집하지 않음
     assert burger.description.startswith("브리오쉬번에 국내산 한우")
 
     n = burger.nutrition
@@ -206,7 +205,6 @@ def test_momstouch_thigh_burger(momstouch_crawl):
     assert burger.name_en == "Thigh Burger"
     assert burger.source_id == "80"
     assert burger.detail_url == "https://www.momstouch.co.kr/menu/view.php?idx=80"
-    assert burger.image_url.startswith("https://www.momstouch.co.kr/")
     assert burger.description
     assert burger.price is None  # 사이트가 가격 미제공
 
@@ -295,7 +293,7 @@ def test_kfc_keeps_only_burgers_with_set_price(kfc_items):
     zinger = by_name(kfc_items)["징거"]
     assert (zinger.price, zinger.set_price) == (6800, 9400)
     assert zinger.detail_url == "https://www.kfckorea.com/menu/detail/N/1249525"
-    assert zinger.image_url.startswith("https://kfcapi.inicis.com/kfcs_api_img/")
+    assert zinger.image_url is None  # 저작권 문제로 브랜드 공식 이미지는 수집하지 않음
     n = zinger.nutrition
     assert (n.serving_size_g, n.calories_kcal, n.protein_g, n.sodium_mg) == (225, 553, 33, 866)
 
@@ -318,7 +316,6 @@ def test_frankburger_burgers(frankburger_items):
     assert len(frankburger_items) == 15
     burger = by_name(frankburger_items)["K불고기버거"]  # 'K 불고기 버거' → 공백 제거
     assert burger.description.startswith("전통 궁중식")
-    assert burger.image_url == "https://frankburger.co.kr/img/page/2022_menu/01/menu1_img21.jpg"
     assert burger.price is None
     assert (burger.nutrition.calories_kcal, burger.nutrition.sodium_mg) == (491.99, 656.9)
 
@@ -356,7 +353,6 @@ def test_nobrandburger_burgers(nobrandburger_items):
     burger = by_name(nobrandburger_items)["진짜 비빔밥 버거"]
     assert burger.name_en == "Real Bibimbap Burger"
     assert burger.description.startswith("쌀과 5종 야채로")
-    assert burger.image_url.startswith("https://www.shinsegaefood.com/uimages/2026/10/30/")
     assert (burger.nutrition.calories_kcal, burger.nutrition.sodium_mg) == (674, 1351)
 
 
@@ -387,7 +383,7 @@ def test_shakeshack_burgers_and_chicken_burgers(shakeshack_items):
 
     shack = items["쉑버거"]
     assert (shack.name_en, shack.price) == ("ShackBurger", 9200)
-    assert shack.image_url == "http://www.shakeshack.kr/resources/images/menu/burger_241126_shackburger.jpg"
+    assert shack.image_url is None  # 저작권 문제로 브랜드 공식 이미지는 수집하지 않음
     assert items["쉑하우스 바비큐 버거"].is_limited  # 시즌 한정
     assert items["핫 치킨"].price == 9700  # 닭가슴살 기준
 
@@ -438,5 +434,31 @@ def test_crycheeseburger_prices_and_set_prices(crycheeseburger_items):
     assert len(items) == 4
     double = items["더블치즈버거"]
     assert (double.price, double.set_price) == (7900, 10900)
-    assert double.image_url == "https://www.crycheeseburger.com/images/menu/yellow/double-cheeseburger.webp"
+    assert double.image_url is None  # 저작권 문제로 브랜드 공식 이미지는 수집하지 않음
     assert items["치킨버거"].description is None  # 소개 문구가 없으면 빈 문자열 대신 None
+
+
+# ---------------------------------------------------------------- 공통
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "mcdonalds_items",
+        "burgerking_items",
+        "lotteria_items",
+        "kfc_items",
+        "frankburger_items",
+        "nobrandburger_items",
+        "shakeshack_items",
+        "fiveguys_items",
+        "crycheeseburger_items",
+    ],
+)
+def test_crawlers_do_not_collect_brand_images(fixture_name, request):
+    items = request.getfixturevalue(fixture_name)
+    assert items and all(item.image_url is None for item in items)
+
+
+def test_momstouch_does_not_collect_brand_images(momstouch_crawl):
+    assert all(item.image_url is None for item in momstouch_crawl[0])

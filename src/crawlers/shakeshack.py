@@ -14,7 +14,6 @@ MENU_URL = f"{BASE_URL}/sub/menu.jsp"
 BURGER_SECTIONS = ("menu_burger", "menu_chicken")
 # 'W 10,9' = 10,900원 (천 단위 뒤 한 자리만 표기)
 PRICE_RE = re.compile(r"W\s*(\d+),(\d)")
-BG_URL_RE = re.compile(r"url\(['\"]?([^'\")]+)")
 
 
 def parse_won(text: str) -> Optional[int]:
@@ -60,7 +59,6 @@ class ShakeShackCrawler(BaseCrawler):
                         name_en=clean_name(titles[0].find(string=True, recursive=False) or "") or None,
                         description=description or None,
                         price=parse_won(prices[-1].get_text(" ", strip=True)) if prices else None,
-                        image_url=self._image_url(card.select_one(".menu-image")),
                         detail_url=f"{MENU_URL}#tab1",
                         is_limited="한정" in description,
                     )
@@ -68,8 +66,3 @@ class ShakeShackCrawler(BaseCrawler):
 
         logger.info("[%s] 버거 %d건 수집", self.brand_name, len(items))
         return items
-
-    @staticmethod
-    def _image_url(node) -> Optional[str]:
-        match = BG_URL_RE.search(node.get("style", "")) if node else None
-        return f"{BASE_URL}{match.group(1)}" if match else None

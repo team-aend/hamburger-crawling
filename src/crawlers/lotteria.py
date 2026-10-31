@@ -42,7 +42,6 @@ class LotteriaCrawler(BaseCrawler):
                 continue
             product_id = body.get("id")
             detail_url = f"{BASE_URL}/products/introductions/{product_id}?rccode=brnd_main&brandCode=RIA"
-            image = card.select_one("img.mn-card-img")
             badge = body.select_one(".mn-badge")
             price = body.select_one(".mn-card-price")
 
@@ -59,7 +58,6 @@ class LotteriaCrawler(BaseCrawler):
                     price=parse_price(price.get_text()) if price else None,
                     description=self._fetch_description(detail_url),
                     # 리사이즈 파라미터(/dims/...)를 떼고 원본 이미지 사용
-                    image_url=image["src"].split("/dims/")[0] if image else None,
                     detail_url=detail_url,
                     is_limited=bool(badge) and "한정" in badge.get_text(),
                     nutrition=row["nutrition"] if row else NutritionInfo(),

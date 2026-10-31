@@ -84,7 +84,6 @@ class FiveGuysCrawler(BaseCrawler):
             if not name.endswith("버거"):
                 continue
             description = card.select_one(".card-menu-item-content p")
-            image = card.select_one(".card-menu-item-thumb img")
             items.append(
                 BurgerItem(
                     brand=self.brand_name,
@@ -92,7 +91,6 @@ class FiveGuysCrawler(BaseCrawler):
                     name=name,
                     source_id=card.find_parent("li")["id"].removeprefix("menu-item-"),
                     description=description.get_text(" ", strip=True) if description else None,
-                    image_url=image.get("src") if image else None,
                     detail_url=BURGER_URL,
                     nutrition=recipe_nutrition(burger_recipe(name), components),
                 )
